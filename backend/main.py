@@ -1,6 +1,14 @@
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import FastAPI
+import models 
+from database import SessionLocal, engine
+
+models.Base.metadata.create_all(bind=engine)
+
 app = FastAPI()
 
-@app.get("/")
-def read_root():
-    return {"message": "StayAtHome Backend"}
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
