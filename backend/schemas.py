@@ -1,10 +1,12 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 # User 관련 스키마
 class UserBase(BaseModel):
     user_name: str
-    home_wifi_bssid: str | None = None
+
+class UserCreate(UserBase):
+    pass
 
 class User(UserBase):
     id: int
@@ -24,6 +26,7 @@ class WifiLog(WifiLogBase):
     id: int
     user_id: int
     start_time: datetime
+    end_time: datetime | None = None
     
     class Config:
         from_attributes = True
