@@ -8,8 +8,6 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_name = Column(String(50), unique=True, index=True, nullable=False)
-    home_wifi_bssid = Column(String(50), nullable=True)
-
     logs = relationship("WifiLog", back_populates="user")
 
 class WifiLog(Base):
