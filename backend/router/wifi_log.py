@@ -10,10 +10,9 @@ from api import log_api
 wifi_log = APIRouter(prefix="/log", tags=["log"])
 
 
-@wifi_log.post("/create", response_model=schemas.WifiLog)
-def create_log(wifi_log: schemas.WifiLogCreate, db: Session = Depends(get_db)):
-    return log_api.create_log(db=db, wifi_log=wifi_log)
-
+@wifi_log.post("/start", response_model=schemas.WifiLog)
+def start_log(wifi_log: schemas.WifiLogCreate, db: Session = Depends(get_db)):
+    return log_api.start_log(db=db, wifi_log=wifi_log)
 
 @wifi_log.get("/id/{user_id}", response_model=schemas.WifiLog)
 def read_log_by_id(user_id: int, db: Session = Depends(get_db)):

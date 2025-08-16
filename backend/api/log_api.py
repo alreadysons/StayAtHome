@@ -3,7 +3,7 @@ import models, schemas
 from datetime import datetime
 
 # 새로운 로그 생성
-def create_log(db: Session, wifi_log: schemas.WifiLogCreate):
+def start_log(db: Session, wifi_log: schemas.WifiLogCreate):
     db_wifi_log = models.WifiLog(
         user_id=wifi_log.user_id,
         start_time=datetime.now()
