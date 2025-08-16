@@ -8,6 +8,8 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_name = Column(String(50), unique=True, index=True, nullable=False)
+    home_ssid = Column(String(50), nullable=False)
+    home_bssid = Column(String(50), nullable=False)
     logs = relationship("WifiLog", back_populates="user")
 
 class WifiLog(Base):
@@ -15,8 +17,6 @@ class WifiLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    bssid = Column(String(50), nullable=False)
-    ssid = Column(String(50), index=True, nullable=False)
     start_time = Column(DateTime, server_default=func.now(), nullable=False)
     end_time = Column(DateTime, nullable=True)
 
