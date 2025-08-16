@@ -18,14 +18,13 @@ class User(UserBase):
 
 # WifiLog 관련 스키마
 class WifiLogBase(BaseModel):
-    bssid: str
-    ssid: str
-    start_time: datetime | None = None
-    end_time: datetime | None = None
+    user_id: int
+
+class WifiLogCreate(WifiLogBase):
+    pass
 
 class WifiLog(WifiLogBase):
     id: int
-    user_id: int
     start_time: datetime
     end_time: datetime | None = None
     
