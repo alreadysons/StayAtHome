@@ -4,7 +4,6 @@ import models, schemas
 # 새로운 사용자를 생성
 def create_user(db: Session, user: schemas.UserCreate):
     db_user = models.User(**user.model_dump())
-    
     db.add(db_user)
     db.commit()    
     db.refresh(db_user)
