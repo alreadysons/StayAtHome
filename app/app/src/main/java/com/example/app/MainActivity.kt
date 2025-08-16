@@ -15,10 +15,31 @@ import androidx.compose.ui.unit.dp
 import com.example.app.ui.theme.AppTheme
 import com.example.app.viewmodel.WifiUiState
 import com.example.app.viewmodel.ViewModel
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 
 class MainActivity : ComponentActivity() {
 
     private val viewModel: ViewModel by viewModels()
+    private lateinit var connectivityManager: ConnectivityManager
+    private val wifiNetworkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            // Wi‑Fi 네트워크가 사용 가능해지면 호출됨
+            runOnUiThread {
+                viewModel.onWifiAvailable(this@MainActivity)
+            }
+        }
+
+        override fun onLost(network: Network) {
+            // Wi‑Fi 네트워크가 끊어졌을 때 호출됨
+            runOnUiThread {
+                viewModel.onWifiLost()
+            }
+        }
+    }
 
     // 권한 요청 결과를 처리하는 부분
     private val requestPermissionLauncher =
@@ -43,10 +64,27 @@ class MainActivity : ComponentActivity() {
                 WifiInfoScreen(
                     uiState = uiState,
                     onRefresh = { viewModel.getWifiInfo(this) },
-                    onRegister = { userName -> viewModel.registerWifiInfo(userName) }
+                    onRegister = { userName -> viewModel.registerWifiInfo(userName) },
+                    onEnd = { viewModel.endHomeLog() }
                 )
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val request = NetworkRequest.Builder()
+            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+            .build()
+        connectivityManager.registerNetworkCallback(request, wifiNetworkCallback)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        try {
+            connectivityManager.unregisterNetworkCallback(wifiNetworkCallback)
+        } catch (_: Exception) { }
     }
 }
 
@@ -55,7 +93,8 @@ class MainActivity : ComponentActivity() {
 fun WifiInfoScreen(
     uiState: WifiUiState,
     onRefresh: () -> Unit,
-    onRegister: (String) -> Unit
+    onRegister: (String) -> Unit,
+    onEnd: () -> Unit
 ) {
     var userName by remember { mutableStateOf("") }
 
@@ -98,6 +137,11 @@ fun WifiInfoScreen(
         if (uiState.registrationStatus.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
             Text(text = uiState.registrationStatus)
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(onClick = onEnd) {
+            Text("WIFI 해제 테스트")
         }
     }
 }
