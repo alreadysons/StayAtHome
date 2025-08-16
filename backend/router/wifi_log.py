@@ -26,3 +26,10 @@ def read_log_by_id(user_id: int, db: Session = Depends(get_db)):
 def read_logs(start: int = 0, last: int = 10, db: Session = Depends(get_db)):
     logs = log_api.get_all_logs(db, start=start, last=last)
     return logs
+
+@wifi_log.post("/end", response_model=schemas.WifiLog)
+def end_log(log_id: int, db: Session = Depends(get_db)):
+    db_log = log_api.end_log(db=db, log_id=log_id)
+    if db_log is None:
+        raise HTTPException(status_code=404, detail="Log not found")
+    return db_log

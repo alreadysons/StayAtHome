@@ -20,3 +20,13 @@ def get_all_logs(db: Session, start: int = 0, last: int = 10):
 # 사용자 id로 사용자 반환
 def get_log_by_id(db: Session, user_id: int):
     return db.query(models.WifiLog).filter(models.WifiLog.user_id == user_id).first()
+
+def end_log(db: Session, log_id: int):
+    db_log = db.query(models.WifiLog).filter(models.WifiLog.id == log_id).first()
+    if db_log is None:
+        return None
+    
+    db_log.end_time = datetime.now()
+    db.commit()
+    db.refresh(db_log)
+    return db_log
