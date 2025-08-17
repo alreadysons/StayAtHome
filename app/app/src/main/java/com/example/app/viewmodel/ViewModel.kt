@@ -69,18 +69,18 @@ class ViewModel : ViewModel() {
         }
     }
 
-    //wifi 정보 등록하는 기능
-    fun registerWifiInfo(userName: String) {
+    //wifi 정보 등록
+    fun registerWifiInfo() {
         val currentState = _uiState.value
-        if (userName.isBlank() || currentState.ssid.isBlank()) {
-            _uiState.update { it.copy(registrationStatus = "이름과 Wi-Fi 정보가 모두 필요합니다.") }
+        if (currentState.ssid.isBlank()) {
+            _uiState.update { it.copy(registrationStatus = "Wi‑Fi 정보가 필요합니다.") }
             return
         }
 
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(registrationStatus = "등록 중...") }
-                val request = UserCreateRequest(userName, currentState.ssid, currentState.bssid)
+                val request = UserCreateRequest(currentState.ssid, currentState.bssid)
                 val res: UserResponse = RetrofitClient.instance.registerUser(request)
                 userId = res.id
                 homeSsid = res.home_ssid

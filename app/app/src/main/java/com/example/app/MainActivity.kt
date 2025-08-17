@@ -64,7 +64,7 @@ class MainActivity : ComponentActivity() {
                 WifiInfoScreen(
                     uiState = uiState,
                     onRefresh = { viewModel.getWifiInfo(this) },
-                    onRegister = { userName -> viewModel.registerWifiInfo(userName) },
+                    onRegister = { viewModel.registerWifiInfo() },
                     onEnd = { viewModel.endHomeLog() }
                 )
             }
@@ -93,10 +93,9 @@ class MainActivity : ComponentActivity() {
 fun WifiInfoScreen(
     uiState: WifiUiState,
     onRefresh: () -> Unit,
-    onRegister: (String) -> Unit,
+    onRegister: () -> Unit,
     onEnd: () -> Unit
 ) {
-    var userName by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -118,20 +117,12 @@ fun WifiInfoScreen(
             Text("새로고침")
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
-        OutlinedTextField(
-            value = userName,
-            onValueChange = { userName = it },
-            label = { Text("사용자 이름") },
-            singleLine = true
-        )
-
         Spacer(modifier = Modifier.height(16.dp))
         Button(
-            onClick = { onRegister(userName) },
-            enabled = uiState.ssid.isNotEmpty() && userName.isNotEmpty()
+            onClick = { onRegister() },
+            enabled = uiState.ssid.isNotEmpty()
         ) {
-            Text("서버에 등록")
+            Text("서버에 등록 (SSID/BSSID)")
         }
 
         if (uiState.registrationStatus.isNotEmpty()) {
