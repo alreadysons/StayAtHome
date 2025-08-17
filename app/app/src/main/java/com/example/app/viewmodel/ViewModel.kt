@@ -144,7 +144,7 @@ class ViewModel : ViewModel() {
         return !hs.isNullOrBlank() && currentSsid == hs
     }
 
-    // 네트워크 콜백에서 호출: Wi‑Fi 해제 시 종료 시도
+    // 네트워크 콜백에서 호출: wifi 해제 시 종료 시도
     fun onWifiLost() {
         if (currentLogId != null) {
             endHomeLog()
