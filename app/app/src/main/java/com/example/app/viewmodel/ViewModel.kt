@@ -13,6 +13,9 @@ import com.example.app.data.UserResponse
 import com.example.app.data.StartLogRequest
 import com.example.app.data.LogResponse
 import com.example.app.network.RetrofitClient
+import com.example.app.data.saveUserId
+import com.example.app.data.userIdFlow
+import com.example.app.data.clearUserId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,7 +27,8 @@ data class WifiUiState(
     val ssid: String = "",
     val bssid: String = "",
     val message: String = "Wi-Fi 정보를 가져오는 중...",
-    val registrationStatus: String = ""
+    val registrationStatus: String = "",
+    val savedUserId: Int? = null
 )
 
 class ViewModel : ViewModel() {
@@ -70,8 +74,13 @@ class ViewModel : ViewModel() {
     }
 
     //wifi 정보 등록
-    fun registerWifiInfo() {
+    fun registerWifiInfo(context: Context) {
         val currentState = _uiState.value
+        // 이미 저장된 사용자라면 중복 등록 방지
+        if (userId != null || currentState.savedUserId != null) {
+            _uiState.update { it.copy(registrationStatus = "이미 등록된 사용자입니다 (user_id=${userId ?: currentState.savedUserId})") }
+            return
+        }
         if (currentState.ssid.isBlank()) {
             _uiState.update { it.copy(registrationStatus = "Wi‑Fi 정보가 필요합니다.") }
             return
@@ -85,7 +94,9 @@ class ViewModel : ViewModel() {
                 userId = res.id
                 homeSsid = res.home_ssid
                 homeBssid = res.home_bssid
-                // TODO: DataStore에 userId 저장
+                // DataStore에 userId 저장
+                saveUserId(context, res.id)
+                _uiState.update { it.copy(savedUserId = res.id) }
                 _uiState.update { it.copy(registrationStatus = "등록 성공 (user_id=${res.id})") }
 
                 // 등록 직후 현재 Wi‑Fi가 집과 일치하면 즉시 로그 시작
@@ -95,6 +106,18 @@ class ViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(registrationStatus = "오류 발생: ${e.message}") }
+            }
+        }
+    }
+
+    // 저장된 user_id 로드하여 표시
+    fun loadSavedUserId(context: Context) {
+        viewModelScope.launch {
+            userIdFlow(context).collect { id ->
+                if (id != null) {
+                    userId = id
+                    _uiState.update { it.copy(savedUserId = id) }
+                }
             }
         }
     }
@@ -148,6 +171,30 @@ class ViewModel : ViewModel() {
     fun onWifiLost() {
         if (currentLogId != null) {
             endHomeLog()
+        }
+    }
+
+    // 사용자 삭제 및 DataStore에서 user_id 제거
+    fun deleteUser(context: Context) {
+        val uid = userId ?: _uiState.value.savedUserId
+        if (uid == null) {
+            _uiState.update { it.copy(registrationStatus = "삭제할 사용자 없음") }
+            return
+        }
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(registrationStatus = "삭제 중...") }
+                val res = RetrofitClient.instance.deleteUser(uid)
+                // 성공 시 상태/저장소 초기화
+                userId = null
+                currentLogId = null
+                homeSsid = null
+                homeBssid = null
+                clearUserId(context)
+                _uiState.update { it.copy(savedUserId = null, registrationStatus = "삭제 성공 (user_id=${res.id})") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(registrationStatus = "삭제 실패: ${e.message}") }
+            }
         }
     }
 }

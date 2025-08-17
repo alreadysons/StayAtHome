@@ -64,8 +64,9 @@ class MainActivity : ComponentActivity() {
                 WifiInfoScreen(
                     uiState = uiState,
                     onRefresh = { viewModel.getWifiInfo(this) },
-                    onRegister = { viewModel.registerWifiInfo() },
-                    onEnd = { viewModel.endHomeLog() }
+                    onRegister = { viewModel.registerWifiInfo(this) },
+                    onEnd = { viewModel.endHomeLog() },
+                    onDelete = { viewModel.deleteUser(this) }
                 )
             }
         }
@@ -73,6 +74,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        // 저장된 user_id 로드
+        viewModel.loadSavedUserId(this)
         connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val request = NetworkRequest.Builder()
             .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
@@ -94,7 +97,8 @@ fun WifiInfoScreen(
     uiState: WifiUiState,
     onRefresh: () -> Unit,
     onRegister: () -> Unit,
-    onEnd: () -> Unit
+    onEnd: () -> Unit,
+    onDelete: () -> Unit
 ) {
 
     Column(
@@ -120,7 +124,7 @@ fun WifiInfoScreen(
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = { onRegister() },
-            enabled = uiState.ssid.isNotEmpty()
+            enabled = uiState.ssid.isNotEmpty() && uiState.savedUserId == null
         ) {
             Text("서버에 등록 (SSID/BSSID)")
         }
@@ -130,9 +134,19 @@ fun WifiInfoScreen(
             Text(text = uiState.registrationStatus)
         }
 
+        if (uiState.savedUserId != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = "저장된 user_id: ${uiState.savedUserId}")
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
         Button(onClick = onEnd) {
             Text("WIFI 해제 테스트")
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+        Button(onClick = onDelete, enabled = uiState.savedUserId != null) {
+            Text("사용자 삭제 (/user/delete)")
         }
     }
 }

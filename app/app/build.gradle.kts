@@ -65,4 +65,6 @@ dependencies {
 
     // Coroutines (비동기 작업)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    // DataStore (키-값 저장)
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
 }

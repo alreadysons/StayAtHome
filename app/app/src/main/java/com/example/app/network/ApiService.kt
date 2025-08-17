@@ -6,6 +6,8 @@ import com.example.app.data.LogResponse
 import retrofit2.http.Body
 import retrofit2.http.POST
 import retrofit2.http.Query
+import retrofit2.http.DELETE
+import retrofit2.http.Path
 
 interface ApiService {
     @POST("user/create")
@@ -16,4 +18,7 @@ interface ApiService {
 
     @POST("log/end")
     suspend fun endLog(@Query("log_id") logId: Int): LogResponse
+
+    @DELETE("user/delete/{user_id}")
+    suspend fun deleteUser(@Path("user_id") userId: Int): UserResponse
 }
