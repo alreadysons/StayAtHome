@@ -67,4 +67,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     // DataStore (키-값 저장)
     implementation("androidx.datastore:datastore-preferences:1.1.1")
+    // WorkManager (주기적 백그라운드 작업)
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
 }
