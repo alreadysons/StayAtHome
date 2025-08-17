@@ -9,6 +9,16 @@ def create_user(db: Session, user: schemas.UserCreate):
     db.refresh(db_user)
     return db_user
 
+def update_user_home_wifi(db: Session, user_id: int, user: schemas.UserCreate):
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if db_user is None:
+        return None
+    db_user.home_ssid = user.home_ssid
+    db_user.home_bssid = user.home_bssid
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
 
 def delete_user(db: Session, user_id: int):
     db_user = db.query(models.User).filter(models.User.id == user_id).first()

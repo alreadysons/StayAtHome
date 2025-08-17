@@ -12,6 +12,13 @@ user = APIRouter(prefix="/user", tags=["user"])
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return user_api.create_user(db=db, user=user)
 
+@user.put("/{user_id}/home_wifi", response_model=schemas.User)
+def update_home_wifi(user_id: int, user: schemas.UserCreate, db: Session = Depends(get_db)):
+    db_user = user_api.update_user_home_wifi(db, user_id=user_id, user=user)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return db_user
+
 @user.delete("/delete/{user_id}", response_model=schemas.User)
 def delete_user(user_id: int, db: Session = Depends(get_db)):
     db_user = user_api.delete_user(db, user_id=user_id)
@@ -30,4 +37,3 @@ def read_user_by_id(user_id: int, db: Session = Depends(get_db)):
 def read_users(start: int = 0, last: int = 10, db: Session = Depends(get_db)):
     users = user_api.get_all_users(db, start=start, last=last)
     return users
-

@@ -6,14 +6,21 @@ from datetime import date, datetime, timezone, timedelta
 # 한국 시간대 설정
 KST = timezone(timedelta(hours=9))
 
-# 새로운 로그 생성
+# 새로운 로그 생성 (이미 열린 로그가 있으면 그 로그 반환)
 def start_log(db: Session, wifi_log: schemas.WifiLogCreate):
+    open_log = db.query(models.WifiLog).filter(
+        models.WifiLog.user_id == wifi_log.user_id,
+        models.WifiLog.end_time.is_(None)
+    ).first()
+    if open_log:
+        return open_log
+
     db_wifi_log = models.WifiLog(
         user_id=wifi_log.user_id,
         start_time=datetime.now(KST)
     )
     db.add(db_wifi_log)
-    db.commit()    
+    db.commit()
     db.refresh(db_wifi_log)
     return db_wifi_log
 
