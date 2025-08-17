@@ -8,6 +8,7 @@ import retrofit2.http.POST
 import retrofit2.http.Query
 import retrofit2.http.DELETE
 import retrofit2.http.Path
+import retrofit2.http.PUT
 
 interface ApiService {
     @POST("user/create")
@@ -21,4 +22,10 @@ interface ApiService {
 
     @DELETE("user/delete/{user_id}")
     suspend fun deleteUser(@Path("user_id") userId: Int): UserResponse
+
+    @PUT("user/{user_id}/home_wifi")
+    suspend fun updateHomeWifi(
+        @Path("user_id") userId: Int,
+        @Body request: UserCreateRequest
+    ): UserResponse
 }

@@ -15,11 +15,15 @@ import com.example.app.data.LogResponse
 import com.example.app.network.RetrofitClient
 import com.example.app.data.saveUserId
 import com.example.app.data.userIdFlow
+import com.example.app.data.saveHomeWifi
+import com.example.app.data.saveCurrentLogId
+import com.example.app.data.clearCurrentLogId
 import com.example.app.data.clearUserId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 // 화면에 표시될 모든 정보를 담는 데이터 클래스
@@ -76,11 +80,6 @@ class ViewModel : ViewModel() {
     //wifi 정보 등록
     fun registerWifiInfo(context: Context) {
         val currentState = _uiState.value
-        // 이미 저장된 사용자라면 중복 등록 방지
-        if (userId != null || currentState.savedUserId != null) {
-            _uiState.update { it.copy(registrationStatus = "이미 등록된 사용자입니다 (user_id=${userId ?: currentState.savedUserId})") }
-            return
-        }
         if (currentState.ssid.isBlank()) {
             _uiState.update { it.copy(registrationStatus = "Wi‑Fi 정보가 필요합니다.") }
             return
@@ -90,19 +89,33 @@ class ViewModel : ViewModel() {
             try {
                 _uiState.update { it.copy(registrationStatus = "등록 중...") }
                 val request = UserCreateRequest(currentState.ssid, currentState.bssid)
-                val res: UserResponse = RetrofitClient.instance.registerUser(request)
+
+                // 이미 user_id가 있으면 홈 Wi‑Fi 업데이트, 없으면 생성
+                val existingId = userId ?: _uiState.value.savedUserId
+                val res: UserResponse = if (existingId != null) {
+                    RetrofitClient.instance.updateHomeWifi(existingId, request)
+                } else {
+                    RetrofitClient.instance.registerUser(request)
+                }
+
                 userId = res.id
                 homeSsid = res.home_ssid
                 homeBssid = res.home_bssid
-                // DataStore에 userId 저장
+                // DataStore에 userId 저장(새로 생성된 경우에도 동일 처리)
                 saveUserId(context, res.id)
+                // 집 Wi‑Fi 정보 저장
+                saveHomeWifi(context, res.home_ssid, res.home_bssid)
                 _uiState.update { it.copy(savedUserId = res.id) }
                 _uiState.update { it.copy(registrationStatus = "등록 성공 (user_id=${res.id})") }
 
                 // 등록 직후 현재 Wi‑Fi가 집과 일치하면 즉시 로그 시작
                 val now = _uiState.value
-                if (currentLogId == null && isHomeWifi(now.ssid, now.bssid)) {
-                    startHomeLog()
+                val isHome = isHomeWifi(now.ssid, now.bssid)
+                if (isHome && currentLogId == null) {
+                    startHomeLog(context)
+                } else if (!isHome && currentLogId != null) {
+                    // 홈 Wi‑Fi가 변경되어 현재 네트워크가 집이 아니게 되면 즉시 종료
+                    endHomeLog(context)
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(registrationStatus = "오류 발생: ${e.message}") }
@@ -123,26 +136,32 @@ class ViewModel : ViewModel() {
     }
 
     //wifi 연결 시 호출
-    fun startHomeLog() {
+    fun startHomeLog(context: Context) {
         val uid = userId ?: return
         if (currentLogId != null) return // 이미 시작됨
         viewModelScope.launch {
             try {
                 val log: LogResponse = RetrofitClient.instance.startLog(StartLogRequest(uid))
                 currentLogId = log.id
-                // TODO: DataStore에 currentLogId 저장
+                // DataStore에 currentLogId 저장
+                saveCurrentLogId(context, log.id)
             } catch (_: Exception) { /* no-op */ }
         }
     }
 
     //wifi 해제 시 호출
-    fun endHomeLog() {
-        val logId = currentLogId ?: return
+    fun endHomeLog(context: Context) {
         viewModelScope.launch {
             try {
+                var logId = currentLogId
+                if (logId == null) {
+                    // DataStore에 저장된 값으로 보완
+                    logId = com.example.app.data.currentLogIdFlow(context).first()
+                }
+                if (logId == null) return@launch
                 RetrofitClient.instance.endLog(logId)
                 currentLogId = null
-                // TODO: DataStore에서 currentLogId 제거
+                clearCurrentLogId(context)
             } catch (_: Exception) { /* no-op */ }
         }
     }
@@ -153,24 +172,24 @@ class ViewModel : ViewModel() {
         val state = _uiState.value
         if (isHomeWifi(state.ssid, state.bssid)) {
             // 집 Wi‑Fi에 연결됨 → 시작 시도
-            startHomeLog()
+            startHomeLog(context)
         } else {
             // 집이 아닌 Wi‑Fi에 연결됨 → 진행 중이면 종료
-            if (currentLogId != null) endHomeLog()
+            if (currentLogId != null) endHomeLog(context)
         }
     }
 
     private fun isHomeWifi(currentSsid: String, currentBssid: String): Boolean {
-        val hb = homeBssid
-        if (!hb.isNullOrBlank() && currentBssid.equals(hb, ignoreCase = true)) return true
         val hs = homeSsid
-        return !hs.isNullOrBlank() && currentSsid == hs
+        val hb = homeBssid
+        // SSID나 BSSID 중 하나라도 다르면 '다른 Wi‑Fi'로 판정
+        return !hs.isNullOrBlank() && !hb.isNullOrBlank() && currentSsid == hs && currentBssid.equals(hb, ignoreCase = true)
     }
 
     // 네트워크 콜백에서 호출: wifi 해제 시 종료 시도
-    fun onWifiLost() {
+    fun onWifiLost(context: Context) {
         if (currentLogId != null) {
-            endHomeLog()
+            endHomeLog(context)
         }
     }
 
