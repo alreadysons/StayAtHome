@@ -15,31 +15,15 @@ import androidx.compose.ui.unit.dp
 import com.example.app.ui.theme.AppTheme
 import com.example.app.viewmodel.WifiUiState
 import com.example.app.viewmodel.ViewModel
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import com.example.app.worker.WifiMonitorWorker
 
 class MainActivity : ComponentActivity() {
 
     private val viewModel: ViewModel by viewModels()
-    private lateinit var connectivityManager: ConnectivityManager
-    private val wifiNetworkCallback = object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: Network) {
-            // Wi‑Fi 네트워크가 사용 가능해지면 호출됨
-            runOnUiThread {
-                viewModel.onWifiAvailable(this@MainActivity)
-            }
-        }
-
-        override fun onLost(network: Network) {
-            // Wi‑Fi 네트워크가 끊어졌을 때 호출됨
-            runOnUiThread {
-                viewModel.onWifiLost()
-            }
-        }
-    }
+    // WorkManager로 주기적 체크
 
     // 권한 요청 결과를 처리하는 부분
     private val requestPermissionLauncher =
@@ -65,7 +49,7 @@ class MainActivity : ComponentActivity() {
                     uiState = uiState,
                     onRefresh = { viewModel.getWifiInfo(this) },
                     onRegister = { viewModel.registerWifiInfo(this) },
-                    onEnd = { viewModel.endHomeLog() },
+                    onEnd = { viewModel.endHomeLog(this) },
                     onDelete = { viewModel.deleteUser(this) }
                 )
             }
@@ -76,18 +60,14 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         // 저장된 user_id 로드
         viewModel.loadSavedUserId(this)
-        connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val request = NetworkRequest.Builder()
-            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-            .build()
-        connectivityManager.registerNetworkCallback(request, wifiNetworkCallback)
+        // WorkManager 스케줄 시작
+        val req = OneTimeWorkRequestBuilder<WifiMonitorWorker>().build()
+        WorkManager.getInstance(this)
+            .enqueueUniqueWork(WifiMonitorWorker.WORK_NAME, ExistingWorkPolicy.REPLACE, req)
     }
 
     override fun onStop() {
         super.onStop()
-        try {
-            connectivityManager.unregisterNetworkCallback(wifiNetworkCallback)
-        } catch (_: Exception) { }
     }
 }
 
@@ -124,7 +104,7 @@ fun WifiInfoScreen(
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = { onRegister() },
-            enabled = uiState.ssid.isNotEmpty() && uiState.savedUserId == null
+            enabled = uiState.ssid.isNotEmpty()
         ) {
             Text("서버에 등록 (SSID/BSSID)")
         }
