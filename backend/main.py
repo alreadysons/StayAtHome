@@ -3,12 +3,14 @@ import models
 from database import SessionLocal, engine
 from router.user import user
 from router.wifi_log import wifi_log
+from router.statistics import statistics_router
 
 
 app = FastAPI()
 
 app.include_router(wifi_log)
 app.include_router(user)
+app.include_router(statistics_router)
 
 models.Base.metadata.create_all(bind=engine)
 
