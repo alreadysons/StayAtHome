@@ -8,6 +8,18 @@ def create_user(db: Session, user: schemas.UserCreate):
     db.commit()    
     db.refresh(db_user)
     return db_user
+def delete_user(db: Session, user_id: int):
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if db_user is None:
+        return None
+    # 사용자와 관련된 로그도 함께 삭제
+    db.query(models.WifiLog).filter(models.WifiLog.user_id == user_id).delete()
+    db.commit()
+    
+    # 사용자 삭제
+    db.delete(db_user)
+    db.commit()
+    return db_user
 
 # 전체 사용자 목록
 def get_all_users(db: Session, start: int = 0, last: int = 10):
