@@ -7,7 +7,6 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_name = Column(String(50), unique=True, index=True, nullable=False)
     home_ssid = Column(String(50), nullable=False)
     home_bssid = Column(String(50), nullable=False)
     logs = relationship("WifiLog", back_populates="user")

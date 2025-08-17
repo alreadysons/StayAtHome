@@ -3,7 +3,6 @@ from pydantic import BaseModel
 
 # User 관련 스키마
 class UserBase(BaseModel):
-    user_name: str
     home_ssid: str
     home_bssid: str
 
