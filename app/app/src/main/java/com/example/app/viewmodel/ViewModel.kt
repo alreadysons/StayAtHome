@@ -19,6 +19,8 @@ import com.example.app.data.saveHomeWifi
 import com.example.app.data.saveCurrentLogId
 import com.example.app.data.clearCurrentLogId
 import com.example.app.data.clearUserId
+import com.example.app.data.homeWifiFlow
+import com.example.app.data.WeeklyStatsResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,7 +34,9 @@ data class WifiUiState(
     val bssid: String = "",
     val message: String = "Wi-Fi 정보를 가져오는 중...",
     val registrationStatus: String = "",
-    val savedUserId: Int? = null
+    val savedUserId: Int? = null,
+    val homeSsid: String? = null,
+    val homeBssid: String? = null
 )
 
 class ViewModel : ViewModel() {
@@ -44,6 +48,12 @@ class ViewModel : ViewModel() {
     private var currentLogId: Int? = null
     private var homeSsid: String? = null
     private var homeBssid: String? = null
+
+    // 통계 상태
+    private val _weeklyStats = MutableStateFlow<WeeklyStatsResponse?>(null)
+    val weeklyStats: StateFlow<WeeklyStatsResponse?> = _weeklyStats.asStateFlow()
+    private val _weeklyStatsError = MutableStateFlow<String?>(null)
+    val weeklyStatsError: StateFlow<String?> = _weeklyStatsError.asStateFlow()
 
     // wifi 정보 가져오는 기능
     fun getWifiInfo(context: Context) {
@@ -105,7 +115,7 @@ class ViewModel : ViewModel() {
                 saveUserId(context, res.id)
                 // 집 Wi‑Fi 정보 저장
                 saveHomeWifi(context, res.home_ssid, res.home_bssid)
-                _uiState.update { it.copy(savedUserId = res.id) }
+                _uiState.update { it.copy(savedUserId = res.id, homeSsid = res.home_ssid, homeBssid = res.home_bssid) }
                 _uiState.update { it.copy(registrationStatus = "등록 성공 (user_id=${res.id})") }
 
                 // 등록 직후 현재 Wi‑Fi가 집과 일치하면 즉시 로그 시작
@@ -131,6 +141,14 @@ class ViewModel : ViewModel() {
                     userId = id
                     _uiState.update { it.copy(savedUserId = id) }
                 }
+            }
+        }
+        // 홈 Wi‑Fi 저장값도 관찰
+        viewModelScope.launch {
+            homeWifiFlow(context).collect { (hs, hb) ->
+                this@ViewModel.homeSsid = hs
+                this@ViewModel.homeBssid = hb
+                _uiState.update { it.copy(homeSsid = hs, homeBssid = hb) }
             }
         }
     }
@@ -210,9 +228,26 @@ class ViewModel : ViewModel() {
                 homeSsid = null
                 homeBssid = null
                 clearUserId(context)
-                _uiState.update { it.copy(savedUserId = null, registrationStatus = "삭제 성공 (user_id=${res.id})") }
+                _uiState.update { it.copy(savedUserId = null, homeSsid = null, homeBssid = null, registrationStatus = "삭제 성공 (user_id=${res.id})") }
             } catch (e: Exception) {
                 _uiState.update { it.copy(registrationStatus = "삭제 실패: ${e.message}") }
+            }
+        }
+    }
+
+    // 주간 통계 로드
+    fun fetchWeeklyStats(context: Context) {
+        viewModelScope.launch {
+            try {
+                _weeklyStatsError.value = null
+                _weeklyStats.value = null
+                val uid = userId ?: userIdFlow(context).first()
+                if (uid != null) {
+                    val res = RetrofitClient.instance.getWeeklyStats(uid)
+                    _weeklyStats.value = res
+                }
+            } catch (e: Exception) {
+                _weeklyStatsError.value = e.message ?: "불러오기 실패"
             }
         }
     }
