@@ -33,9 +33,16 @@ def get_weekly_statistics(db: Session, user_id: int) -> Dict:
     for log in logs:
         log_date = log.start_time.strftime('%Y-%m-%d')
         
-        # 종료 시간이 없는 경우 현재 시간을 기준으로 계산
-        end_time = log.end_time if log.end_time else current_time
-        time_long = (end_time - log.start_time).total_seconds() / 3600
+        # start_time에 timezone 정보 추가
+        start_time = log.start_time.replace(tzinfo=KST) if log.start_time.tzinfo is None else log.start_time
+        
+        # end_time이 있는 경우 timezone 정보 추가
+        if log.end_time:
+            end_time = log.end_time.replace(tzinfo=KST) if log.end_time.tzinfo is None else log.end_time
+        else:
+            end_time = current_time
+            
+        time_long = (end_time - start_time).total_seconds() / 3600
         
         # 24시간을 넘지 않도록 보정
         time_long = min(time_long, 24.0)
