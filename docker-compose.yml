@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: test-mysql
+    environment:
+      MYSQL_DATABASE: stayathome
+      MYSQL_USER: stay
+      MYSQL_PASSWORD: staypass
+      MYSQL_ROOT_PASSWORD: rootpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-prootpass"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: stayathome-backend
+    environment:
+      # SQLAlchemy URL for mysqlclient (mysqldb)
+      - DATABASE_URL=mysql+mysqldb://stay:staypass@db:3306/stayathome?charset=utf8mb4
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+volumes:
+  db_data:
+
