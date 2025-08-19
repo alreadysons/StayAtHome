@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>집 체류 시간 기록 앱</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- ✅ Lucide(바닐라) UMD: lucide-react ❌ -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #F5F5DC; /* Beige */
+    }
+    .nav-button.active {
+      background-color: #6B8E6B; /* Darker Dark Sea Green */
+      color: #F5F5DC;
+    }
+  </style>
+</head>
+<body class="flex justify-center items-center h-screen">
+
+  <!-- App Container -->
+  <div class="w-full max-w-sm h-full sm:h-[800px] sm:max-h-[90vh] bg-[#F5F5DC] shadow-2xl rounded-lg flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-[#8FBC8F] text-white p-4 text-center shadow-md">
+      <h1 id="header-title" class="text-xl font-bold">Stayathome</h1>
+    </header>
+
+    <!-- Main -->
+    <main class="flex-grow p-6 overflow-y-auto">
+
+      <!-- 1. Home (버튼 정중앙 배치) -->
+      <div id="home-screen" class="screen h-full flex items-center justify-center">
+        <div class="flex flex-col items-center">
+          <button id="register-wifi-btn" class="bg-[#8FBC8F] text-white p-8 rounded-full shadow-lg hover:bg-[#7aae7a] transition-transform hover:scale-105">
+            <i data-lucide="wifi" class="w-16 h-16"></i>
+          </button>
+          <p class="mt-4 text-gray-600">집 Wi-Fi 등록하기</p>
+
+          <!-- 등록 플로우 -->
+          <div id="wifi-registration-flow" class="hidden mt-8 p-6 bg-white/50 rounded-lg w-full text-left">
+            <h3 class="font-semibold text-lg text-gray-800">현재 연결된 Wi-Fi</h3>
+            <div class="my-3 p-3 bg-gray-100 rounded-md flex items-center">
+              <i data-lucide="signal" class="w-5 h-5 mr-2 text-green-600"></i>
+              <span id="current-wifi-name" class="text-gray-700 font-medium">MyHome_WiFi_5G</span>
+            </div>
+            <p class="text-sm text-gray-600 mb-4">이 Wi-Fi를 '집'으로 등록하시겠습니까?</p>
+            <button id="confirm-registration-btn" class="w-full bg-[#8FBC8F] text-white py-2 rounded-lg hover:bg-[#7aae7a] transition-colors">
+              등록
+            </button>
+          </div>
+
+          <!-- 성공 메시지 -->
+          <div id="success-message" class="hidden mt-8 p-4 bg-green-100 text-green-800 rounded-lg w-full flex items-center justify-center">
+            <i data-lucide="check-circle" class="w-5 h-5 mr-2"></i>
+            <span>성공적으로 등록되었습니다.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. 통계 -->
+      <div id="stats-screen" class="screen hidden">
+        <h2 class="text-2xl font-bold text-gray-700 mb-4">주간 체류 시간 통계</h2>
+        <div class="bg-white/60 p-4 rounded-xl shadow-md h-64">
+          <canvas id="stayTimeChart"></canvas>
+        </div>
+        <div class="mt-6 p-4 bg-white/60 rounded-xl shadow-md">
+          <h3 class="font-semibold text-gray-700 mb-2">이번 주 요약</h3>
+          <div class="flex justify-around text-center">
+            <div>
+              <p class="text-sm text-gray-500">평균 시간</p>
+              <p class="text-xl font-bold text-[#8FBC8F]">8.2 시간</p>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">가장 긴 시간</p>
+              <p class="text-xl font-bold text-[#8FBC8F]">11.5 시간</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. 설정 -->
+      <div id="settings-screen" class="screen hidden">
+        <h2 class="text-2xl font-bold text-gray-700 mb-4">설정</h2>
+        <div class="bg-white/60 p-4 rounded-xl shadow-md">
+          <h3 class="font-semibold text-gray-800 mb-2">현재 접속 정보</h3>
+          <div class="p-3 bg-gray-100 rounded-md flex items-center">
+            <i data-lucide="wifi" class="w-5 h-5 mr-2 text-gray-600"></i>
+            <span class="text-gray-700">MyHome_WiFi_5G</span>
+          </div>
+        </div>
+        <div class="mt-4 bg-white/60 p-4 rounded-xl shadow-md">
+          <h3 class="font-semibold text-gray-800 mb-2">등록된 '집' Wi-Fi</h3>
+          <div class="p-3 bg-gray-100 rounded-md flex items-center justify-between">
+            <div class="flex items-center">
+              <i data-lucide="home" class="w-5 h-5 mr-2 text-gray-600"></i>
+              <span class="text-gray-700">MyHome_WiFi_5G</span>
+            </div>
+            <button class="text-red-500 hover:text-red-700 text-sm">삭제</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom Nav -->
+    <nav class="bg-white/80 backdrop-blur-sm border-t border-gray-200 grid grid-cols-3 gap-2 p-2 shadow-inner">
+      <!-- ✅ 초기에는 모두 동일한 기본색; active가 색을 바꿔줌 -->
+      <button data-target="stats-screen" data-title="통계" class="nav-button flex flex-col items-center justify-center p-2 rounded-lg text-gray-600 hover:bg-gray-200 transition-colors">
+        <i data-lucide="bar-chart-3" class="w-6 h-6 mb-1"></i>
+        <span class="text-xs">통계</span>
+      </button>
+      <button data-target="home-screen" data-title="Stayathome" class="nav-button active flex flex-col items-center justify-center p-2 rounded-lg hover:bg-gray-200 transition-colors">
+        <i data-lucide="home" class="w-6 h-6 mb-1"></i>
+        <span class="text-xs">홈</span>
+      </button>
+      <button data-target="settings-screen" data-title="설정" class="nav-button flex flex-col items-center justify-center p-2 rounded-lg text-gray-600 hover:bg-gray-200 transition-colors">
+        <i data-lucide="settings" class="w-6 h-6 mb-1"></i>
+        <span class="text-xs">설정</span>
+      </button>
+    </nav>
+  </div>
+
+  <script>
+    // DOMContentLoaded가 더 가볍고 충분
+    document.addEventListener('DOMContentLoaded', function () {
+      // Lucide 아이콘 초기화
+      if (window.lucide && typeof lucide.createIcons === 'function') {
+        lucide.createIcons();
+      } else {
+        console.warn('Lucide가 로드되지 않았습니다.');
+      }
+
+      const screens = document.querySelectorAll('.screen');
+      const navButtons = document.querySelectorAll('.nav-button');
+      const headerTitle = document.getElementById('header-title');
+
+      // 네비게이션
+      navButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          const targetId = button.dataset.target;
+          const targetTitle = button.dataset.title;
+
+          screens.forEach(screen => screen.classList.add('hidden'));
+          document.getElementById(targetId).classList.remove('hidden');
+          headerTitle.textContent = targetTitle;
+
+          navButtons.forEach(btn => btn.classList.remove('active'));
+          button.classList.add('active');
+
+          if (targetId === 'stats-screen') {
+            renderChart();
+          }
+        });
+      });
+
+      // 홈: Wi-Fi 등록 플로우
+      const registerWifiBtn = document.getElementById('register-wifi-btn');
+      const wifiRegistrationFlow = document.getElementById('wifi-registration-flow');
+      const confirmRegistrationBtn = document.getElementById('confirm-registration-btn');
+      const successMessage = document.getElementById('success-message');
+
+      registerWifiBtn.addEventListener('click', () => {
+        wifiRegistrationFlow.classList.remove('hidden');
+        successMessage.classList.add('hidden');
+      });
+
+      confirmRegistrationBtn.addEventListener('click', () => {
+        wifiRegistrationFlow.classList.add('hidden');
+        successMessage.classList.remove('hidden');
+        setTimeout(() => successMessage.classList.add('hidden'), 3000);
+      });
+
+      // Chart.js
+      let myChart = null;
+      function renderChart() {
+        const canvas = document.getElementById('stayTimeChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        if (myChart) myChart.destroy();
+
+        myChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: ['월', '화', '수', '목', '금', '토', '일'],
+            datasets: [{
+              label: '집에 머문 시간 (시간)',
+              data: [8.5, 9, 7, 11.5, 8, 10, 9.5],
+              backgroundColor: 'rgba(143, 188, 143, 0.2)',
+              borderColor: '#8FBC8F',
+              borderWidth: 3,
+              tension: 0.4,
+              fill: true,
+              pointBackgroundColor: '#8FBC8F',
+              pointRadius: 5,
+              pointHoverRadius: 7
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false, // ✅ 모바일에서 높이 꽉 차게
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  callback: (value) => `${value} 시간`
+                }
+              }
+            },
+            plugins: { legend: { display: false } }
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>
