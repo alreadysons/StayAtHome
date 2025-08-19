@@ -21,6 +21,7 @@ import com.example.app.data.clearCurrentLogId
 import com.example.app.data.clearUserId
 import com.example.app.data.homeWifiFlow
 import com.example.app.data.WeeklyStatsResponse
+import retrofit2.HttpException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -102,10 +103,23 @@ class ViewModel : ViewModel() {
 
                 // 이미 user_id가 있으면 홈 Wi‑Fi 업데이트, 없으면 생성
                 val existingId = userId ?: _uiState.value.savedUserId
-                val res: UserResponse = if (existingId != null) {
-                    RetrofitClient.instance.updateHomeWifi(existingId, request)
-                } else {
-                    RetrofitClient.instance.registerUser(request)
+                val res: UserResponse = try {
+                    if (existingId != null) {
+                        RetrofitClient.instance.updateHomeWifi(existingId, request)
+                    } else {
+                        RetrofitClient.instance.registerUser(request)
+                    }
+                } catch (e: HttpException) {
+                    // 서버 DB에 사용자가 없을 때(404) 로컬 상태 초기화 후 생성으로 폴백
+                    if (e.code() == 404 && existingId != null) {
+                        clearUserId(context)
+                        clearCurrentLogId(context)
+                        userId = null
+                        currentLogId = null
+                        RetrofitClient.instance.registerUser(request)
+                    } else {
+                        throw e
+                    }
                 }
 
                 userId = res.id
@@ -228,9 +242,21 @@ class ViewModel : ViewModel() {
                 homeSsid = null
                 homeBssid = null
                 clearUserId(context)
+                clearCurrentLogId(context)
                 _uiState.update { it.copy(savedUserId = null, homeSsid = null, homeBssid = null, registrationStatus = "삭제 성공 (user_id=${res.id})") }
             } catch (e: Exception) {
-                _uiState.update { it.copy(registrationStatus = "삭제 실패: ${e.message}") }
+                // 서버에 사용자가 이미 없을 때(404)는 성공으로 간주하고 로컬만 정리
+                if (e is HttpException && e.code() == 404) {
+                    userId = null
+                    currentLogId = null
+                    homeSsid = null
+                    homeBssid = null
+                    clearUserId(context)
+                    clearCurrentLogId(context)
+                    _uiState.update { it.copy(savedUserId = null, homeSsid = null, homeBssid = null, registrationStatus = "삭제 성공 (이미 서버에 없음)") }
+                } else {
+                    _uiState.update { it.copy(registrationStatus = "삭제 실패: ${e.message}") }
+                }
             }
         }
     }
