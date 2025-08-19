@@ -3,7 +3,7 @@ version: "3.9"
 services:
   db:
     image: mysql:8.0
-    container_name: test-mysql
+    container_name: stayathome-mysql
     environment:
       MYSQL_DATABASE: stayathome
       MYSQL_USER: stay
